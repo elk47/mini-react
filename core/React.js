@@ -1,3 +1,6 @@
+let nextWork = null;
+let root = null;
+
 const createTextNode = (val) => {
   return {
     type: "TEXT_NODE",
@@ -13,13 +16,13 @@ const createElement = (type, props, ...children) => {
     type,
     props: {
       ...props,
-      children: children.map((child) =>
-        typeof child === "string" ? createTextNode(child) : child
-      ),
+      children: children.map((child) => {
+        const isText = typeof child === "string" || typeof child === "number";
+        return isText ? createTextNode(child) : child;
+      }),
     },
   };
 };
-let nextWork = null;
 
 const render = (element, container) => {
   nextWork = {
@@ -31,6 +34,7 @@ const render = (element, container) => {
     child: null,
     sibling: null,
   };
+  root = nextWork;
   requestIdleCallback(workLoop);
 };
 
@@ -41,51 +45,102 @@ function workLoop(deadline) {
     nextWork = performUnitOfWork(nextWork);
     shouldYield = deadline.timeRemaining() < 1;
   }
+  if (!nextWork && root) {
+    commitRoot();
+    root = null;
+  }
+  requestIdleCallback(workLoop);
 }
 
-const performUnitOfWork = (work) => {
-  if (!work.dom) {
-    const dom = (work.dom =
-      work.type === "TEXT_NODE"
-        ? document.createTextNode("")
-        : document.createElement(work.type));
-    work.parent.dom.append(dom);
-    Object.keys(work.props).forEach((key) => {
-      if (key !== "children") {
-        dom[key] = work.props[key];
-      }
-    });
+const commitRoot = () => {
+  commitWork(root.child);
+};
+
+const commitWork = (work) => {
+  if (!work) {
+    return;
   }
-  const children = work.props.children;
+  let parentWork = work.parent;
+  while (!parentWork.dom) {
+    parentWork = parentWork.parent;
+  }
+  if (work.dom) {
+    parentWork.dom.append(work.dom);
+  }
+  commitWork(work.child);
+  commitWork(work.sibling);
+};
+
+function createDom(type) {
+  return type === "TEXT_NODE"
+    ? document.createTextNode("")
+    : document.createElement(type);
+}
+
+function updateProps(dom, props) {
+  Object.keys(props).forEach((key) => {
+    if (key !== "children") dom[key] = props[key];
+  });
+}
+
+function initChildren(fiber, children) {
   let prevChild = null;
-  children.forEach((child) => {
-    const newChild = {
+  children.forEach((child, index) => {
+    const newFiber = {
       type: child.type,
       props: child.props,
-      parent: work,
       child: null,
+      parent: fiber,
       sibling: null,
       dom: null,
     };
-    if (!prevChild) {
-      work.child = newChild;
+    if (index === 0) {
+      fiber.child = newFiber;
     } else {
-      prevChild.sibling = newChild;
+      prevChild.sibling = newFiber;
     }
-    prevChild = newChild;
+    prevChild = newFiber;
   });
+}
+
+function updateFunctionComponent(work) {
+  const children = [work.type(work.props)];
+  initChildren(work, children);
+}
+
+function updateHoistComponent(work) {
+  if (!work.dom) {
+    const el = (work.dom = createDom(work.type));
+    updateProps(el, work.props);
+  }
+  initChildren(work, work.props.children);
+}
+
+const performUnitOfWork = (work) => {
+  const isFuncComponent = typeof work.type === "function";
+  if (isFuncComponent) updateFunctionComponent(work);
+  else updateHoistComponent(work);
+
   if (work.child) {
     return work.child;
   }
+
   if (work.sibling) {
     return work.sibling;
   }
 
-  return work.parent.sibling;
+  let nextWork = work.parent;
+  while (nextWork) {
+    if (nextWork.sibling) {
+      return nextWork.sibling;
+    }
+    nextWork = nextWork.parent;
+  }
 };
 
 const React = {
   createElement,
   render,
 };
+
 export default React;
