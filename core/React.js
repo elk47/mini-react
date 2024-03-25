@@ -83,23 +83,23 @@ function updateProps(dom, props) {
   });
 }
 
-function initChildren(fiber, children) {
+function initChildren(work, children) {
   let prevChild = null;
-  children.forEach((child, index) => {
-    const newFiber = {
+  children.forEach((child) => {
+    const newChild = {
       type: child.type,
       props: child.props,
       child: null,
-      parent: fiber,
+      parent: work,
       sibling: null,
       dom: null,
     };
-    if (index === 0) {
-      fiber.child = newFiber;
+    if (!prevChild) {
+      work.child = newChild;
     } else {
-      prevChild.sibling = newFiber;
+      prevChild.sibling = newChild;
     }
-    prevChild = newFiber;
+    prevChild = newChild;
   });
 }
 
@@ -110,6 +110,7 @@ function updateFunctionComponent(work) {
 
 function updateHoistComponent(work) {
   if (!work.dom) {
+    console.log(work);
     const el = (work.dom = createDom(work.type));
     updateProps(el, work.props);
   }
@@ -118,8 +119,7 @@ function updateHoistComponent(work) {
 
 const performUnitOfWork = (work) => {
   const isFuncComponent = typeof work.type === "function";
-  if (isFuncComponent) updateFunctionComponent(work);
-  else updateHoistComponent(work);
+  isFuncComponent ? updateFunctionComponent(work) : updateHoistComponent(work);
 
   if (work.child) {
     return work.child;
