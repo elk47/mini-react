@@ -1,16 +1,26 @@
-import React from "../core/React.js"
+import React from '../core/React.js';
 
 const Counter = () => {
-    return <div>test</div>
-}
-
+    return <div>test</div>;
+};
 const CounterWrapper = () => {
-    return <div>
-        <Counter></Counter>
-        <Counter></Counter>
-    </div>
+    return (
+        <div>
+            <Counter></Counter>
+        </div>
+    );
+};
+let count = 0;
+const handleClick = () => {
+    console.log('click')
+    count++
+    React.update()
 }
 
-const App = <div>app<CounterWrapper></CounterWrapper></div>
+const App = () => (
+    <div>
+        <button onClick={handleClick}>click</button>
+    </div>
+);
 
-export default App
+export default App;
