@@ -1,35 +1,57 @@
 import React from '../core/React.js';
 
-let showBar = false;
-const Counter = () => {
-  const Foo = () => <div>foo</div>;
-  const bar = <div>bar</div>;
+let countRoot = 0;
+let countFoo = 0;
+let countBar = 0;
+// let showBar = false;
+
+const Foo = () => {
+  const handleClick = () => {
+    console.log('foo');
+    const update = React.update();
+    countFoo++;
+    update();
+  };
   return (
     <div>
-      Counter
-      <div>{showBar ? bar : <Foo />}</div>
-      <button onClick={handleShowBar}>showbar</button>
+      <h1>foo</h1>
+      {countFoo}
+      <button onClick={handleClick}>click</button>
     </div>
   );
 };
-// const CounterWrapper = () => {
-//   return (
-//     <div>
-//       <Counter></Counter>
-//     </div>
-//   );
-// };
-// let count = 0;
 
-const handleShowBar = () => {
-  showBar = !showBar;
-  React.update();
+const Bar = () => {
+  const handleClick = () => {
+    console.log('bar');
+    const update = React.update();
+    countBar++;
+    update();
+  };
+  return (
+    <div>
+      <h1>bar</h1>
+      {countBar}
+      <button onClick={handleClick}>click</button>
+    </div>
+  );
 };
 
-const App = () => (
-  <div>
-    <Counter></Counter>
-  </div>
-);
+const App = () => {
+  const handleClick = () => {
+    console.log('app');
+    const update = React.update();
+    countRoot++;
+    update();
+  };
+  return (
+    <div>
+      count:{countRoot}
+      <button onClick={handleClick}>click</button>
+      <Foo />
+      <Bar />
+    </div>
+  );
+};
 
 export default App;

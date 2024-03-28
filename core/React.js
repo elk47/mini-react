@@ -2,6 +2,7 @@ let nextWork = null;
 let wipRoot = null;
 let currentRoot = null;
 let deletions = [];
+let wipFiber = null;
 const createTextNode = text => {
   return {
     type: 'TEXT_ELEMENT',
@@ -37,12 +38,14 @@ const render = (element, container) => {
 };
 
 const update = () => {
-  wipRoot = {
-    dom: currentRoot.dom,
-    props: currentRoot.props,
-    alternate: currentRoot,
+  let currentFiber = wipFiber;
+  return () => {
+    wipRoot = {
+      ...currentFiber,
+      alternate: currentFiber,
+    };
+    nextWork = wipRoot;
   };
-  nextWork = wipRoot;
 };
 
 function workLoop(deadline) {
@@ -50,6 +53,11 @@ function workLoop(deadline) {
 
   while (!shouldYield && nextWork) {
     nextWork = performUnitOfWork(nextWork);
+
+    if (wipRoot?.sibling?.type === nextWork?.type) {
+      nextWork = undefined;
+    }
+
     shouldYield = deadline.timeRemaining() < 1;
   }
   if (!nextWork && wipRoot) {
@@ -158,15 +166,17 @@ function reconcilChildren(fiber, children) {
         alternate: oldFiber,
       };
     } else {
-      newFiber = {
-        type: child.type,
-        props: child.props,
-        child: null,
-        parent: fiber,
-        sibling: null,
-        dom: null,
-        effectTag: 'PLACEMENT',
-      };
+      if (child) {
+        newFiber = {
+          type: child.type,
+          props: child.props,
+          child: null,
+          parent: fiber,
+          sibling: null,
+          dom: null,
+          effectTag: 'PLACEMENT',
+        };
+      }
       if (oldFiber) {
         deletions.push(oldFiber);
       }
@@ -180,11 +190,19 @@ function reconcilChildren(fiber, children) {
     } else {
       prevChild.sibling = newFiber;
     }
-    prevChild = newFiber;
+    if (newFiber) {
+      prevChild = newFiber;
+    }
   });
+
+  while (oldFiber) {
+    deletions.push(oldFiber);
+    oldFiber = oldFiber.sibling;
+  }
 }
 
 function updateFunctionComponent(fiber) {
+  wipFiber = fiber;
   const children = [fiber.type(fiber.props)];
   reconcilChildren(fiber, children);
 }
